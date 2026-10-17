@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# macOS metadata files created on non-APFS volumes (exFAT/FAT)
+._*
