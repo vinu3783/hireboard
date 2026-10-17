@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Hiring stages, in pipeline order. HIRED and REJECTED are terminal stages.
+enum Stage {
+  APPLIED
+  SCREENING
+  TECHNICAL_INTERVIEW
+  FINAL_INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum Source {
+  LINKEDIN
+  REFERRAL
+  CAREERS_PAGE
+  JOB_BOARD
+  AGENCY
+  OTHER
+}
+
+enum ActivityType {
+  CREATED
+  UPDATED
+  STAGE_CHANGED
+  DELETED
+}
+
+model Candidate {
+  id              String   @id @default(cuid())
+  fullName        String
+  /// Always stored lower-cased so the unique constraint is case-insensitive.
+  email           String   @unique
+  phone           String?
+  jobTitle        String
+  yearsExperience Int?
+  skills          String[]
+  stage           Stage    @default(APPLIED)
+  source          Source
+  appliedAt       DateTime
+  notes           String?
+  resumeUrl       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  activities Activity[]
+
+  @@index([stage])
+  @@index([jobTitle])
+  @@index([source])
+  @@index([appliedAt])
+}
+
+/// Append-only event log. Events survive candidate deletion (candidateId is
+/// set to NULL) so the dashboard feed can still show "candidate deleted".
+model Activity {
+  id            String       @id @default(cuid())
+  type          ActivityType
+  candidateId   String?
+  candidate     Candidate?   @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  /// Snapshot of the name at the time of the event.
+  candidateName String
+  fromStage     Stage?
+  toStage       Stage?
+  /// Field names that changed on an UPDATED event.
+  changedFields String[]
+  createdAt     DateTime     @default(now())
+
+  @@index([candidateId, createdAt])
+  @@index([createdAt])
+}
