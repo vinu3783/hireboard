@@ -1,182 +1,266 @@
-# Hireboard
+<h1 align="center">Hireboard</h1>
 
-Hireboard is a compact applicant tracking system (ATS) for small recruiting teams. Recruiters can add candidates, move them through a seven-stage hiring pipeline, search and filter the candidate list, and see live pipeline metrics on a dashboard. Every change is written to an activity log.
+<p align="center">
+  <strong>A simple applicant tracking system (ATS) for small recruiting teams.</strong><br/>
+  Track candidates, move them through hiring stages, find anyone in seconds and see your pipeline at a glance.
+</p>
 
-![Dashboard](docs/screenshots/dashboard.png)
+<p align="center">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Prisma-4169E1?logo=postgresql&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" />
+  <img alt="Tests" src="https://img.shields.io/badge/unit_tests-36_passing-2ea44f" />
+</p>
 
-> **Status:** demo application without authentication — see [Known limitations](#known-limitations-and-trade-offs).
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Hireboard dashboard" width="900" />
+</p>
 
-## Features
+> Built for the **EarlyJobs.ai Full Stack Developer Intern** assignment: manage candidates, hiring stages, search and dashboard metrics.
 
-**Dashboard**
-- Total candidates, active-in-pipeline, interviews scheduled and offers made, all calculated from the database on every request.
-- "Candidates by stage" bar chart. Each row links to the candidate list filtered to that stage.
-- Recent activity feed (creations, edits, stage changes, deletions) and a "top roles" breakdown.
-- Each metric card links to the matching filtered list. For example, *Interviews scheduled* opens `/candidates?stage=TECHNICAL_INTERVIEW,FINAL_INTERVIEW`.
+---
 
-**Candidate management**
-- Create, view, edit and delete (delete asks for confirmation in an accessible `<dialog>`).
-- Shared Zod validation on the client and the server, with inline errors on blur and on submit. Focus moves to the first invalid field.
-- Duplicate emails are rejected case-insensitively. Emails are stored lower-cased and protected by a unique index, so concurrent requests can't create duplicates either.
-- Structured data: Postgres enums for stage and source, a `text[]` column for skills, an integer for years of experience, and a date for the application date.
+## Contents
 
-**Hiring pipeline**
-- Stages: Applied → Screening → Technical Interview → Final Interview → Offer → Hired, plus Rejected.
-- A kanban board with a stage `<select>` on every card. The select works with a keyboard, screen readers and touch. Mouse users can also drag and drop cards.
-- Moves update the board immediately, are rolled back if the API call fails, and are logged in the activity history.
-- The candidate profile has "Move to *next stage*" and "Reject" shortcuts.
+1. [What it does](#what-it-does)
+2. [Visual tour](#visual-tour)
+3. [Run it locally](#run-it-locally)
+4. [How it's built](#how-its-built)
+5. [Testing](#testing)
+6. [Deployment](#deployment)
+7. [Known limitations](#known-limitations)
 
-**Search, filtering and sorting**
-- Search by name or email (case-insensitive, debounced).
-- Filter by stage (multi-select chips), job title and source. Sort by application date or name. Paginated at 10 per page.
-- All filters combine and live in the URL, so filtered views can be shared and the dashboard can link straight to them.
-- Separate empty states for "no candidates yet" and "no candidates match these filters".
+---
 
-**Activity history**
-- An append-only `Activity` table records `CREATED`, `UPDATED` (with the changed field names), `STAGE_CHANGED` (from → to) and `DELETED` events.
-- Events are written in the same transaction as the change they describe.
-- Events keep a snapshot of the candidate's name, so the dashboard feed still makes sense after a candidate is deleted.
+## What it does
 
-**Robustness**
-- One JSON response shape across the API: `{ data }` on success, `{ error: { code, message, fieldErrors? } }` on failure. Status codes: 400 invalid JSON, 404 not found, 409 duplicate email, 422 validation, 500 unexpected error, 503 database unreachable.
-- Pages have loading skeletons, a "not found" page for missing candidates, and an error boundary with a retry button for database outages.
-- Accessibility: a skip link, visible focus rings, labelled controls, `aria-pressed` filter chips, `aria-live` toasts, and stage colour always paired with a text label.
+| | Feature | In short |
+| :-: | --- | --- |
+| 📊 | **Dashboard** | Live counts of candidates, interviews and offers, a stage-by-stage chart and recent activity |
+| 👤 | **Candidate management** | Add, view, edit and delete candidates, with clear error messages for bad or duplicate input |
+| 🗂️ | **Hiring pipeline** | A board with 7 stages. Move a candidate with one click or by dragging the card |
+| 🔍 | **Search and filters** | Search by name or email, then filter by stage, job title and source and sort the results |
+| 🕒 | **Activity history** | Every new candidate, edit and stage change is recorded with a timestamp |
+| 💾 | **Saved data** | Everything is stored in a PostgreSQL database, so nothing is lost on refresh |
 
-## Screenshots
+**Hiring stages:** Applied → Screening → Technical Interview → Final Interview → Offer → Hired, plus Rejected.
 
-| Candidates (search, filters, sort) | Candidate profile + activity |
-| --- | --- |
-| ![Candidates](docs/screenshots/candidates.png) | ![Profile](docs/screenshots/candidate-profile.png) |
-| **Pipeline board** | **Add candidate with inline validation** |
-| ![Pipeline](docs/screenshots/pipeline.png) | ![Validation](docs/screenshots/add-candidate-validation.png) |
-| **Filtered list (from the dashboard)** | **Empty state** |
-| ![Filtered](docs/screenshots/candidates-filtered.png) | ![Empty](docs/screenshots/empty-state.png) |
+---
 
-Mobile: [dashboard](docs/screenshots/mobile-dashboard.png) · [candidates](docs/screenshots/mobile-candidates.png)
+## Visual tour
 
-## Tech stack
+### 1. Dashboard: the whole pipeline at a glance
 
-| Concern | Choice | Why |
-| --- | --- | --- |
-| Framework | Next.js 15 (App Router), React 19, TypeScript | Server components read from the database directly; route handlers provide the JSON API |
-| Styling | Tailwind CSS v4 with design tokens in `globals.css` | Fast to build with and keeps the visual system in one place |
-| Database | PostgreSQL via Prisma 6 | Enums, arrays, case-insensitive search, and it runs on serverless hosts (SQLite does not persist on Vercel) |
-| Validation | Zod 4 | One schema shared by the form and the API |
-| Tests | Vitest | Fast unit tests for the business logic |
+<img src="docs/screenshots/dashboard.png" alt="Dashboard" width="900" />
 
-No chart or UI-kit dependency is used: the one chart is a small set of CSS bars, and the UI primitives in `src/components/ui` cover what the app needs.
+- **Four headline numbers:** total candidates, candidates still active, interviews scheduled and offers made. All of them are calculated from the database every time the page loads; none are hard-coded.
+- **Candidates by stage:** a bar for each hiring stage, with Hired and Rejected shown separately as outcomes.
+- **Recent activity:** the latest additions, edits and stage changes.
+- **Everything is clickable:** click a number or a stage bar to open the candidate list, already filtered to those candidates.
 
-## Architecture
+---
 
-```
-src/
-  app/                       Routes (server components unless marked "use client")
-    (overview)/page.tsx      Dashboard  (route group so its loading skeleton doesn't wrap other pages)
-    candidates/              List, new, [id] profile, [id]/edit
-    pipeline/                Kanban board
-    api/candidates/…         REST route handlers
-  components/
-    ui/                      Button, Field, Panel, StageBadge, Toast, ConfirmDialog, …
-    candidates/ pipeline/ dashboard/ layout/
-  lib/
-    db.ts                    Prisma client singleton
-    errors.ts / api.ts       AppError, Prisma error mapping, response helpers
-    api-client.ts            Browser fetch wrapper that surfaces field errors
-    candidates/
-      constants.ts           Stages, sources, labels, stage groups (client-safe)
-      schema.ts              Zod input schema shared by client and server
-      query.ts               URL params → Prisma where/orderBy, pagination
-      metrics.ts             Dashboard metrics from per-stage counts
-      diff.ts / activity.ts  Change detection + human-readable activity text
-      service.ts             All database reads and writes (server-only)
-prisma/
-  schema.prisma, migrations/, seed.ts
-```
+### 2. Candidates: search, filter and sort
 
-**How data flows**
-- **Reads:** pages are server components. They call `lib/candidates/service.ts` directly; there is no client-side data fetching for the initial render.
-- **Writes:** client components call the JSON API (`POST /api/candidates`, `PATCH /api/candidates/:id`, `PATCH /api/candidates/:id/stage`, `DELETE /api/candidates/:id`) and then `router.refresh()`. The pages re-render with fresh data, so the dashboard and pipeline are always up to date after a change.
-- **Layering:** pure logic (validation, query building, metrics, diffing) has no database dependency and is unit tested. `service.ts` is the only module that touches Prisma.
+<img src="docs/screenshots/candidates.png" alt="Candidate list" width="900" />
 
-### Data model
+- **Search** by name or email. Results update as you type.
+- **Filter** by stage (click the coloured chips, more than one at a time), by job title and by source (LinkedIn, referral and so on).
+- **Sort** by newest or oldest application, or by name A–Z or Z–A.
+- **Combine** search, filters and sorting freely. **Clear filters** resets everything.
+- The list shows **10 candidates per page**, with Previous and Next buttons.
 
-```prisma
-enum Stage        { APPLIED SCREENING TECHNICAL_INTERVIEW FINAL_INTERVIEW OFFER HIRED REJECTED }
-enum Source       { LINKEDIN REFERRAL CAREERS_PAGE JOB_BOARD AGENCY OTHER }
-enum ActivityType { CREATED UPDATED STAGE_CHANGED DELETED }
+Filters are saved in the page URL, so a filtered view can be bookmarked or shared. Here the list is filtered to the two interview stages and sorted by name:
 
-model Candidate {
-  id, fullName, email (unique, lower-cased), phone?, jobTitle, yearsExperience?,
-  skills String[], stage Stage, source Source, appliedAt, notes?, resumeUrl?,
-  createdAt, updatedAt, activities Activity[]
-}
+<img src="docs/screenshots/candidates-filtered.png" alt="Filtered candidate list" width="900" />
 
-model Activity {
-  id, type, candidateId? (SET NULL on delete), candidateName (snapshot),
-  fromStage?, toStage?, changedFields String[], createdAt
-}
-```
+---
 
-### Metric definitions
+### 3. Candidate profile: everything about one person
 
-Each metric is a sum of per-stage counts, computed in `lib/candidates/metrics.ts`.
+<img src="docs/screenshots/candidate-profile.png" alt="Candidate profile" width="900" />
 
-| Metric | Definition |
-| --- | --- |
-| Total candidates | All candidates |
-| Active in pipeline | Applied + Screening + Technical Interview + Final Interview + Offer (excludes Hired and Rejected) |
-| Interviews scheduled | Technical Interview + Final Interview |
-| Offers made | Offer + Hired (a hired candidate has accepted an offer) |
+- **Profile:** contact details, the job applied for, experience, source, application date, resume link and skills.
+- **Recruiter notes:** free-text notes about the candidate.
+- **Hiring stage:** change the stage from the menu, or use the one-click **Move to [next stage]** and **Reject** buttons.
+- **Activity:** a timeline of everything that happened to this candidate, with dates and times.
+- **Edit** and **Delete** are at the top right. Delete asks for confirmation first.
 
-## Local setup
+---
 
-Requirements: Node.js 20.9+ and a PostgreSQL database.
+### 4. Pipeline: a board of all candidates by stage
 
-```bash
-npm install                 # also runs `prisma generate`
-cp .env.example .env        # then set DATABASE_URL and DIRECT_URL
-npm run db:migrate          # apply migrations (prisma migrate dev)
-npm run db:seed             # load 18 fictional candidates (safe to re-run)
-npm run dev                 # http://localhost:3000
-```
+<img src="docs/screenshots/pipeline.png" alt="Pipeline board" width="900" />
 
-**No local Postgres?** Prisma ships a local Postgres server that needs no install:
+- There's one column per stage, and each column shows its candidate count.
+- **To move a candidate**, pick a new stage from the menu on their card, or drag the card to another column.
+- The card moves immediately. If the save fails, it moves back and an error message appears.
+- Every move is saved, updates the dashboard and is added to the candidate's activity history.
+
+---
+
+### 5. Adding a candidate, with helpful validation
+
+<img src="docs/screenshots/add-candidate-validation.png" alt="Add candidate form with validation errors" width="900" />
+
+- Required fields are marked with **\***.
+- Problems are shown **right under the field**, as soon as you leave it and again when you submit.
+- **Duplicate emails are blocked.** You can't add the same person twice, even if the email is typed with different capital letters.
+- The same rules run in the browser and on the server, so bad data can't be saved by any route.
+
+---
+
+### 6. Empty state and mobile view
+
+When there are no candidates yet, each page explains what to do next instead of showing a blank screen:
+
+<img src="docs/screenshots/empty-state.png" alt="Empty state" width="900" />
+
+The layout adapts to tablets and phones:
+
+<p>
+  <img src="docs/screenshots/mobile-dashboard.png" alt="Mobile dashboard" width="300" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-candidates.png" alt="Mobile candidate list" width="300" />
+</p>
+
+---
+
+## Run it locally
+
+**You need:** Node.js 20.9 or newer, and a PostgreSQL database. If you don't have Postgres installed, step 3 starts one for you.
 
 ```bash
-npm run db:local            # = prisma dev --name hireboard --detach; prints the connection URLs
+# 1. Get the code
+git clone https://github.com/vinu3783/hireboard.git
+cd hireboard
+
+# 2. Install dependencies
+npm install
+
+# 3. Start a local Postgres (no install needed). It prints the connection URLs.
+npm run db:local
+
+# 4. Create your .env file and paste in the "TCP" URL printed in step 3
+cp .env.example .env
+
+# 5. Create the tables and load 18 sample candidates
+npm run db:migrate
+npm run db:seed
+
+# 6. Start the app at http://localhost:3000
+npm run dev
 ```
 
-Copy the `TCP` URL it prints into `.env`. That server shares one session across all connections, so add `pgbouncer=true&connection_limit=1`:
+<details>
+<summary><strong>Example <code>.env</code> for the local database from step 3</strong></summary>
 
-```
+The local Prisma Postgres server shares a single session, so add `pgbouncer=true&connection_limit=1`:
+
+```env
 DATABASE_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&pgbouncer=true&connection_limit=1"
 DIRECT_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&connection_limit=1"
 ```
 
-Any other Postgres (Docker, Postgres.app, a free Neon branch) works with plain connection strings.
+With any other Postgres (Docker, Postgres.app, Neon), use your normal connection string for both values.
+</details>
 
-### Environment variables
+<details>
+<summary><strong>All npm scripts</strong></summary>
 
-| Variable | Used by | Description |
-| --- | --- | --- |
-| `DATABASE_URL` | App runtime | Postgres connection string. Use the **pooled** URL on Neon/Vercel. |
-| `DIRECT_URL` | `prisma migrate` | Direct, non-pooled connection used for migrations. Locally it can equal `DATABASE_URL`. |
-
-`.env` is git-ignored; only `.env.example` is committed.
-
-### Scripts
-
-| Command | Purpose |
+| Command | What it does |
 | --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` / `npm start` | Production build / server |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest unit tests |
-| `npm run db:migrate` | Create/apply migrations in development |
-| `npm run db:deploy` | Apply committed migrations (CI/production) |
-| `npm run db:seed` | Seed fictional candidates. Idempotent: existing emails are skipped, so re-running never duplicates rows or overwrites your edits |
-| `npm run db:reset` | Drop and recreate the database, then re-seed (destructive) |
+| `npm run dev` | Start the development server |
+| `npm run build` / `npm start` | Production build / start the production server |
+| `npm test` | Run the unit tests |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript checks |
+| `npm run db:local` | Start a local Postgres with Prisma |
+| `npm run db:migrate` | Create or apply database migrations |
+| `npm run db:seed` | Add the sample candidates. Safe to run again: no duplicates are created |
+| `npm run db:deploy` | Apply migrations in production |
+| `npm run db:reset` | ⚠️ Delete all data, recreate the tables and re-seed |
+</details>
+
+---
+
+## How it's built
+
+| Layer | Technology |
+| --- | --- |
+| Frontend and backend | **Next.js 15** (App Router) with **React 19** and **TypeScript** |
+| Styling | **Tailwind CSS 4** |
+| Database | **PostgreSQL** with the **Prisma** ORM |
+| Validation | **Zod**: one set of rules shared by the form and the API |
+| Testing | **Vitest** |
+
+**How a request works**
+- **Pages** are rendered on the server and read from the database directly, so pages arrive with their data already in place.
+- **Changes** (create, edit, delete, move stage) go through a small JSON API. After a change, the page refreshes its data, which is why the dashboard and pipeline always match.
+
+<details>
+<summary><strong>Project structure</strong></summary>
+
+```
+src/
+├── app/                      Pages and API routes
+│   ├── (overview)/           Dashboard
+│   ├── candidates/           List, add, profile, edit
+│   ├── pipeline/             Kanban board
+│   └── api/candidates/       JSON API (create, read, update, delete, change stage)
+├── components/               UI pieces (forms, tables, board, dashboard widgets)
+└── lib/
+    ├── db.ts                 Database client
+    └── candidates/
+        ├── schema.ts         Validation rules (shared by browser and server)
+        ├── query.ts          Turns search/filter settings into database queries
+        ├── metrics.ts        Dashboard calculations
+        ├── activity.ts       Activity history text
+        └── service.ts        All database reads and writes
+prisma/
+├── schema.prisma             Data model
+├── migrations/               Database migrations
+└── seed.ts                   Sample data
+```
+</details>
+
+<details>
+<summary><strong>Data model</strong></summary>
+
+**Candidate:** full name, email (unique), phone, job title, years of experience, skills (a list), stage, source, application date, recruiter notes, resume URL.
+
+**Activity:** one row per event (created, updated, stage changed or deleted). It records which stage the candidate moved from and to, which fields changed, and when. Each event keeps the candidate's name, so the history still reads correctly after a candidate is deleted.
+
+Stage and source are fixed lists (database enums), so typos like "Screning" can't get into the data.
+</details>
+
+<details>
+<summary><strong>How the dashboard numbers are calculated</strong></summary>
+
+| Metric | Counts candidates currently in… |
+| --- | --- |
+| Total candidates | Any stage |
+| Active in pipeline | Applied, Screening, Technical Interview, Final Interview or Offer |
+| Interviews scheduled | Technical Interview or Final Interview |
+| Offers made | Offer or Hired (hired candidates accepted an offer) |
+</details>
+
+<details>
+<summary><strong>API reference</strong></summary>
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/candidates?q=&stage=&job=&source=&sort=&page=` | List candidates, with filters |
+| `POST` | `/api/candidates` | Create a candidate |
+| `GET` | `/api/candidates/:id` | Get one candidate |
+| `PATCH` | `/api/candidates/:id` | Update a candidate |
+| `PATCH` | `/api/candidates/:id/stage` | Change the stage only |
+| `DELETE` | `/api/candidates/:id` | Delete a candidate |
+
+Successful responses look like `{ "data": ... }`. Errors look like `{ "error": { "code", "message", "fieldErrors" } }`, with status 400 (bad JSON), 404 (not found), 409 (duplicate email), 422 (invalid fields) or 503 (database unavailable).
+</details>
+
+---
 
 ## Testing
 
@@ -184,38 +268,41 @@ Any other Postgres (Docker, Postgres.app, a free Neon branch) works with plain c
 npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-- **Unit tests (36):** schema validation and normalization (emails, phone, URLs, dates, skills), URL-param parsing and Prisma filter building, pagination clamping, metric calculations, change detection and activity descriptions.
-- **End-to-end checks:** a scripted Chrome walkthrough (Playwright) was run against the production build. It covers dashboard metrics and metric links, validation and duplicate-email errors, create/edit/delete, combined search + filters + sort, pipeline moves, dashboard updates after changes, persistence across reloads, and mobile overflow. That script is not part of this repository.
-- Empty states and database-outage handling (API returns 503, pages show the retry screen) were checked manually against a separate empty database.
+- **36 unit tests** cover the validation rules, search and filter logic, pagination, dashboard calculations and activity history.
+- **Browser walkthrough:** the main workflows were checked in Chrome against a production build. These covered adding, editing and deleting candidates, the duplicate-email error, combined search and filters, moving stages, the dashboard updating after changes, data staying after a refresh, and the mobile layout.
+- **Edge cases:** empty states and database-outage handling were checked by hand.
 
-## Deployment (Vercel + Neon)
+---
 
-SQLite would not persist on Vercel's serverless functions, so Hireboard uses Postgres everywhere.
+## Deployment
 
-1. **Create a database.** Create a free [Neon](https://neon.tech) project (or use Vercel → Storage → Neon). Copy both connection strings:
-   - Pooled (host contains `-pooler`): append `&pgbouncer=true` → `DATABASE_URL`
-   - Direct → `DIRECT_URL`
-2. **Push to GitHub and import the repo into Vercel.** The framework is detected as Next.js.
-3. **Set environment variables** in Vercel (Production and Preview): `DATABASE_URL` and `DIRECT_URL`.
-4. **Deploy.** Vercel runs the `vercel-build` script: `prisma migrate deploy && next build`. Migrations are applied before every build, and `postinstall` generates the Prisma client.
-5. **Seed once** from your machine, using the production URLs:
+The app is designed for **Vercel** with a **Neon** Postgres database. A file-based database like SQLite doesn't persist on Vercel, which is why Hireboard uses Postgres.
+
+1. Create a free database at [neon.tech](https://neon.tech) and copy its **pooled** and **direct** connection strings.
+2. Import this repository into [Vercel](https://vercel.com/new).
+3. Add two environment variables in Vercel:
+   - `DATABASE_URL`: the pooled connection string, with `&pgbouncer=true` added to the end
+   - `DIRECT_URL`: the direct connection string
+4. Deploy. Database migrations run automatically during the build.
+5. Load the sample data once, from your computer:
    ```bash
    DATABASE_URL="<pooled url>" DIRECT_URL="<direct url>" npm run db:seed
    ```
-6. **Verify reads and writes:** open the deployed URL, add a candidate, move them to a new stage, reload the page and check the dashboard.
 
-## Known limitations and trade-offs
+---
 
-- **No authentication or authorization.** Anyone with the URL can read and change data. This is fine for a demo with fictional data; a real deployment needs sign-in (e.g. Auth.js), per-organization data scoping and rate limiting.
-- **Job titles are free text** (with suggestions from existing values) rather than a separate `Job` table. A `Job` model with open/closed status would be the next step.
-- **"Interviews scheduled" is stage-based.** It counts candidates in an interview stage; there is no calendar or interview time slot model.
-- **"Offers made" counts Offer + Hired.** Candidates who declined an offer and were moved to Rejected are not counted. Counting them would need a query over the activity history.
-- **Last write wins.** Two recruiters editing the same candidate at the same time aren't warned; there is no optimistic locking.
-- **Drag and drop is mouse-only** (native HTML5 DnD). The stage select on each card is the accessible path on keyboard and touch devices.
-- **Missing-candidate pages return HTTP 200.** Profile pages stream behind a loading skeleton, so they render the "not found" UI with a 200 status. API routes return a real 404.
-- **No root-level loading skeleton.** A loading boundary above `/candidates` stalled same-route search-param navigations (filters, pagination) in Next.js 15, so the list page shows an inline spinner in the search box instead.
-- **Seeded activity is generated.** Seed data includes a plausible stage history for each candidate. All activity after seeding comes from real events.
+## Known limitations
 
-## Demo
+These are deliberate trade-offs for a time-boxed assignment:
 
-See [docs/demo-script.md](docs/demo-script.md) for a 2–3 minute walkthrough with narration.
+- **No login.** Anyone with the link can view and change data. A real deployment needs authentication.
+- **Job titles are free text** (with suggestions), not a separate "Jobs" list.
+- **"Interviews scheduled" is based on stage.** There's no calendar or interview times.
+- **No edit-conflict warning.** If two people edit the same candidate at once, the last save wins.
+- **Drag and drop needs a mouse.** On keyboard and touch devices, use the stage menu on each card.
+
+---
+
+<p align="center">
+  Made by <strong>Vinayaka GC</strong> · <a href="docs/demo-script.md">Demo walkthrough script</a>
+</p>
