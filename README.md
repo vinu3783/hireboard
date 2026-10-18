@@ -14,6 +14,10 @@
 </p>
 
 <p align="center">
+  🎥 <a href="https://www.loom.com/share/7df1470744fb42a1a4607c9c62bbe045"><strong>Watch the demo video</strong></a>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/dashboard.png" alt="Hireboard dashboard" width="900" />
 </p>
 
@@ -304,5 +308,5 @@ These are deliberate trade-offs for a time-boxed assignment:
 ---
 
 <p align="center">
-  Made by <strong>Vinayaka GC</strong> · <a href="docs/demo-script.md">Demo walkthrough script</a>
+  Made by <strong>Vinayaka GC</strong> · <a href="https://www.loom.com/share/7df1470744fb42a1a4607c9c62bbe045">Demo video</a> · <a href="docs/demo-script.md">Demo walkthrough script</a>
 </p>
