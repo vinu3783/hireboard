@@ -14,7 +14,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    // Browser extensions (e.g. job-board helpers) inject attributes on <html>
+    // before hydration; this only silences attribute mismatches on this element.
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <a
           href="#main"
